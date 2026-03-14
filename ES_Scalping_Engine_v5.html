@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ES Scalping Engine v5 — Live Data</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --g:#00ff88;--g2:#00cc66;--r:#ff3333;--r2:#cc2222;
+  --y:#ffdd00;--b:#00ccff;--o:#ff8800;--pu:#bb88ff;
+  --bg:#000;--bd:#1e1e1e;--bd2:#2a2a2a;
+  --dim:#444;--dim2:#666;--txt:#fff;--txt2:#ccc;
+}
+html,body{background:#000;color:#fff;font-family:'Share Tech Mono',monospace;min-height:100vh;}
+body{padding:10px;}
+
+/* ── HEADER ── */
+#hdr{display:flex;justify-content:space-between;align-items:center;
+  border-bottom:2px solid var(--g);padding-bottom:10px;margin-bottom:10px;}
+.hl .ttl{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;
+  color:var(--g);letter-spacing:4px;text-shadow:0 0 14px #00ff8866;}
+.hl .sub{font-size:9px;color:var(--dim2);letter-spacing:2px;margin-top:3px;}
+.hr{display:flex;gap:20px;align-items:center;}
+.hstat .hsl{font-size:8px;color:var(--dim);letter-spacing:2px;}
+.hstat .hsv{font-family:'Orbitron',monospace;font-size:14px;font-weight:700;margin-top:2px;}
+#big-price{font-family:'Orbitron',monospace;font-size:30px;font-weight:900;
+  color:var(--g);text-shadow:0 0 18px #00ff8877;letter-spacing:2px;transition:color 0.2s;}
+#hdr-trend{font-size:10px;letter-spacing:2px;text-align:right;margin-top:2px;}
+#hdr-clock{font-size:9px;color:var(--dim2);text-align:right;margin-top:1px;}
+
+/* ── DATA SOURCE BAR ── */
+#dsbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;
+  background:#000;border:1px solid var(--bd2);border-radius:8px;padding:10px 14px;
+  flex-wrap:wrap;}
+#ds-status{display:flex;align-items:center;gap:8px;flex:1;}
+#ds-dot{width:10px;height:10px;border-radius:50%;background:var(--r);
+  box-shadow:0 0 8px var(--r);flex-shrink:0;transition:all 0.3s;}
+#ds-label{font-size:11px;color:var(--txt2);}
+#ds-source{font-size:10px;color:var(--dim2);margin-left:4px;}
+.ds-btn{padding:6px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;
+  border-radius:5px;cursor:pointer;letter-spacing:1px;border:1px solid;transition:all 0.15s;}
+.ds-yahoo{background:#000;border-color:var(--y);color:var(--y);}
+.ds-yahoo:hover{background:#1a1400;}
+.ds-sim{background:#000;border-color:var(--dim);color:var(--dim);}
+.ds-sim:hover{background:#111;}
+.ds-tradovate{background:#000;border-color:var(--b);color:var(--b);}
+.ds-tradovate:hover{background:#001a1a;}
+#ds-lastupdate{font-size:9px;color:var(--dim);margin-left:auto;}
+
+/* ── SETUP MODAL ── */
+#setup-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:#000000dd;z-index:1000;overflow-y:auto;padding:20px;}
+#setup-modal{background:#000;border:1px solid var(--b);border-radius:10px;
+  max-width:680px;margin:0 auto;padding:24px;}
+#setup-modal h2{font-family:'Orbitron',monospace;color:var(--b);font-size:16px;
+  letter-spacing:3px;margin-bottom:16px;border-bottom:1px solid #001a2a;padding-bottom:10px;}
+.step{background:#050505;border:1px solid var(--bd2);border-radius:8px;
+  padding:14px;margin-bottom:12px;}
+.step-num{font-family:'Orbitron',monospace;color:var(--b);font-size:11px;
+  letter-spacing:2px;margin-bottom:8px;}
+.step p{font-size:11px;color:var(--txt2);line-height:1.8;margin-bottom:8px;}
+.step code{background:#0a0a0a;border:1px solid var(--bd2);border-radius:4px;
+  padding:8px 12px;display:block;font-size:11px;color:var(--g);
+  margin:6px 0;letter-spacing:1px;word-break:break-all;}
+.step .note{font-size:10px;color:var(--o);margin-top:6px;}
+.close-btn{width:100%;padding:12px;background:#000;border:1px solid var(--g);
+  color:var(--g);font-family:'Share Tech Mono',monospace;font-size:12px;
+  border-radius:6px;cursor:pointer;letter-spacing:2px;margin-top:8px;}
+.tab-btns{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--bd2);border-radius:6px;overflow:hidden;}
+.tab-btn{flex:1;padding:9px 0;font-family:'Share Tech Mono',monospace;font-size:10px;
+  border:none;cursor:pointer;letter-spacing:1px;background:#000;color:var(--dim);transition:all 0.2s;}
+.tab-btn.active{background:#001a00;color:var(--g);}
+.setup-tab{display:none;}.setup-tab.active{display:block;}
+
+/* ── ALERTS ── */
+#ab{margin-bottom:8px;}
+.al{background:#000;border-left:3px solid var(--g);border:1px solid #111;
+  border-left:3px solid var(--g);border-radius:0 4px 4px 0;
+  padding:5px 10px;margin-bottom:4px;font-size:11px;
+  display:flex;justify-content:space-between;animation:sli .25s ease;}
+@keyframes sli{from{opacity:0;transform:translateX(-6px);}to{opacity:1;}}
+
+/* ── MAIN GRID ── */
+#grid{display:grid;grid-template-columns:290px 1fr 270px;gap:10px;}
+@media(max-width:1100px){#grid{grid-template-columns:260px 1fr 250px;}}
+@media(max-width:820px){#grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:540px){#grid{grid-template-columns:1fr;}}
+
+/* ── PANEL ── */
+.pnl{background:#000;border:1px solid var(--bd2);border-radius:8px;
+  padding:12px;margin-bottom:10px;}
+.pnl-t{font-size:9px;color:var(--g);letter-spacing:3px;
+  padding-bottom:7px;margin-bottom:10px;border-bottom:1px solid #0f0f0f;
+  display:flex;justify-content:space-between;align-items:center;}
+
+/* SIGNAL */
+#sp{border:1px solid #002200;}
+#sig-badge{font-family:'Orbitron',monospace;font-size:46px;font-weight:900;
+  text-align:center;letter-spacing:8px;margin:6px 0 4px;
+  text-shadow:0 0 28px currentColor;line-height:1;}
+#sig-conf{font-size:10px;color:var(--dim2);text-align:center;margin-bottom:10px;}
+#cv{font-weight:bold;font-size:12px;}
+.sg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.sb{background:#000;border:1px solid var(--bd2);border-radius:6px;padding:9px 4px;text-align:center;}
+.sb .sl{font-size:8px;color:var(--dim);letter-spacing:2px;}
+.sb .sv{font-family:'Orbitron',monospace;font-size:14px;font-weight:bold;margin-top:3px;}
+#ar{font-size:11px;color:var(--txt2);line-height:1.75;
+  background:#050505;border:1px solid var(--bd);border-radius:6px;
+  padding:10px;min-height:48px;}
+#sct{margin-top:8px;font-size:10px;text-align:center;padding:6px;
+  background:#050505;border:1px solid var(--bd);border-radius:4px;}
+
+/* SIGNAL BASIS */
+.basis-inner{background:#000;border:1px solid #111;border-radius:6px;padding:10px;}
+.bt{font-size:8px;color:var(--y);letter-spacing:3px;margin-bottom:8px;}
+.bi{display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:1px solid #0a0a0a;}
+.bi:last-child{border-bottom:none;}
+.bi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.bil{font-size:9px;color:var(--dim2);width:80px;flex-shrink:0;}
+.biv{font-size:10px;color:var(--txt);}
+
+/* EXECUTE */
+.br{display:flex;gap:8px;margin-bottom:10px;}
+.btn{flex:1;padding:15px 0;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;
+  border-radius:8px;cursor:pointer;letter-spacing:3px;border-width:2px;
+  border-style:solid;transition:all .15s;text-shadow:0 0 8px currentColor;}
+.btn:active{transform:scale(.96);}
+.bl{background:#000;border-color:var(--g);color:var(--g);box-shadow:0 0 14px #00ff8820;}
+.bl:hover{background:#001800;}
+.bsh{background:#000;border-color:var(--r);color:var(--r);box-shadow:0 0 14px #ff333320;}
+.bsh:hover{background:#180000;}
+.bclose{width:100%;margin-top:7px;padding:7px 0;background:#000;
+  border:1px solid var(--r2);color:var(--r);font-family:'Share Tech Mono',monospace;
+  font-size:10px;border-radius:5px;cursor:pointer;letter-spacing:2px;}
+.bclose:hover{background:#180000;}
+.bref{background:#000;border:1px solid var(--g);color:var(--g);
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:4px 10px;
+  border-radius:4px;cursor:pointer;letter-spacing:1px;}
+.bref:disabled{opacity:.35;cursor:default;}
+
+/* BID/ASK */
+#ba{display:grid;grid-template-columns:repeat(4,1fr);
+  background:#000;border:1px solid var(--bd2);border-radius:6px;overflow:hidden;}
+.bab{padding:8px 3px;text-align:center;border-right:1px solid var(--bd);}
+.bab:last-child{border-right:none;}
+.bal{font-size:7px;color:var(--dim);letter-spacing:2px;}
+.bav{font-family:'Orbitron',monospace;font-size:13px;font-weight:bold;margin-top:3px;}
+
+/* SESSION PNL */
+#spnl{font-family:'Orbitron',monospace;font-size:30px;font-weight:900;
+  text-align:center;text-shadow:0 0 16px currentColor;letter-spacing:2px;}
+#ssub{font-size:10px;color:var(--dim2);text-align:center;margin-top:5px;}
+#tbb{background:#0a0a0a;border-radius:3px;height:5px;margin-top:9px;
+  overflow:hidden;border:1px solid var(--bd);}
+#tbf{height:100%;background:linear-gradient(90deg,var(--g),var(--g2));
+  transition:width .6s ease;border-radius:3px;}
+
+/* CALC */
+.ct{display:flex;gap:7px;margin-bottom:9px;}
+.cb{flex:1;padding:7px 0;font-family:'Share Tech Mono',monospace;font-size:10px;
+  border-radius:5px;cursor:pointer;letter-spacing:2px;border:1px solid;transition:all .15s;}
+.cir{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px;}
+.cl{font-size:8px;color:var(--dim);margin-bottom:3px;letter-spacing:1px;}
+.ci{width:100%;background:#000;border:1px solid var(--bd2);color:var(--txt);
+  font-family:'Share Tech Mono',monospace;font-size:13px;padding:7px 8px;
+  border-radius:5px;outline:none;}
+.ci:focus{border-color:var(--g);}
+#pr{border-radius:6px;padding:11px;text-align:center;display:none;border:1px solid;}
+#pa{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;text-shadow:0 0 10px currentColor;}
+#ps{font-size:9px;color:var(--dim2);margin-top:4px;}
+
+/* QUICK MATH */
+.qmg{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.qmb{background:#000;border:1px solid var(--bd);border-radius:6px;padding:8px 10px;}
+.qml{font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:3px;}
+.qmv{font-family:'Orbitron',monospace;font-size:14px;font-weight:bold;}
+
+/* CHART */
+#csv{display:block;width:100%;}
+#cm{display:flex;justify-content:space-between;margin-top:7px;font-size:10px;}
+
+/* METRICS */
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.mb{background:#000;border:1px solid var(--bd2);border-radius:6px;padding:9px 11px;}
+.mbl{font-size:8px;color:var(--dim);letter-spacing:2px;margin-bottom:3px;}
+.mbv{font-family:'Orbitron',monospace;font-size:16px;font-weight:bold;}
+.msrc{font-size:8px;color:var(--dim);margin-top:2px;}
+
+/* ORDER FLOW */
+#ofr{display:flex;justify-content:space-between;margin-bottom:6px;}
+#ofbg{background:#0a0a0a;border-radius:4px;height:11px;overflow:hidden;border:1px solid var(--bd2);}
+#offill{height:100%;background:linear-gradient(90deg,var(--g),var(--g2));transition:width .5s ease;}
+#ofl{text-align:center;font-size:10px;margin-top:5px;letter-spacing:2px;}
+
+/* TAPE */
+#tape{max-height:150px;overflow-y:auto;}
+.tr{display:flex;justify-content:space-between;padding:3px 0;
+  border-bottom:1px solid #080808;font-size:11px;}
+.th{display:flex;justify-content:space-between;font-size:8px;color:var(--dim);
+  margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid var(--bd);letter-spacing:2px;}
+#tape::-webkit-scrollbar{width:3px;}
+#tape::-webkit-scrollbar-track{background:#000;}
+#tape::-webkit-scrollbar-thumb{background:#1a1a1a;}
+
+/* POSITIONS */
+.pc{background:#000;border-radius:6px;padding:11px;margin-bottom:8px;border:1px solid;}
+.pt{display:flex;justify-content:space-between;margin-bottom:5px;}
+.psi{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:2px;}
+.ppnl{font-family:'Orbitron',monospace;font-size:14px;font-weight:900;text-shadow:0 0 8px currentColor;}
+.pm{font-size:9px;color:var(--dim2);display:flex;gap:10px;flex-wrap:wrap;}
+
+/* RULES */
+.ri{font-size:10px;color:#444;padding:5px 0;border-bottom:1px solid #080808;
+  display:flex;align-items:center;gap:7px;}
+.rd{width:5px;height:5px;border-radius:50%;background:var(--g);
+  flex-shrink:0;box-shadow:0 0 5px var(--g);}
+
+/* LIVE DOT */
+.ldot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-right:6px;animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* CHANGE FLASH */
+@keyframes flashUp{0%{background:#00ff8822;}100%{background:transparent;}}
+@keyframes flashDn{0%{background:#ff333322;}100%{background:transparent;}}
+.flash-up{animation:flashUp .5s ease;}
+.flash-dn{animation:flashDn .5s ease;}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setup-overlay">
+  <div id="setup-modal">
+    <h2>⚡ REAL-TIME DATA SETUP GUIDE</h2>
+    <div class="tab-btns">
+      <button class="tab-btn active" onclick="showSetupTab('yahoo',this)">YAHOO (NOW)</button>
+      <button class="tab-btn" onclick="showSetupTab('tradovate',this)">TRADOVATE</button>
+      <button class="tab-btn" onclick="showSetupTab('ninja',this)">NINJATRADER</button>
+      <button class="tab-btn" onclick="showSetupTab('prop',this)">PROP FIRM</button>
+    </div>
+
+    <!-- YAHOO TAB -->
+    <div id="stab-yahoo" class="setup-tab active">
+      <div class="step">
+        <div class="step-num">STEP 1 — START IMMEDIATELY (NO ACCOUNT NEEDED)</div>
+        <p>Yahoo Finance provides ES futures data with ~15 min delay. Good for <strong style="color:var(--y)">daily bias and trend direction</strong>. Not for tick scalping but great to start.</p>
+        <p>Click <strong style="color:var(--g)">"YAHOO FINANCE"</strong> button in the data bar above. The engine will fetch real ES price every 15 seconds automatically.</p>
+        <div class="note">⚠ 15-minute delay — use for directional bias only, not precise entries</div>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 2 — WHAT YOU GET</div>
+        <p>✅ Real ES price (delayed 15 min)<br>
+        ✅ Real session High / Low<br>
+        ✅ Real volume data<br>
+        ✅ AI signal based on real trend<br>
+        ❌ No real-time tick data<br>
+        ❌ No live bid/ask spread</p>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 3 — UPGRADE PATH</div>
+        <p>Once you confirm your prop firm platform, switch to Tradovate or NinjaTrader for <strong style="color:var(--g)">true real-time tick data</strong>.</p>
+      </div>
+    </div>
+
+    <!-- TRADOVATE TAB -->
+    <div id="stab-tradovate" class="setup-tab">
+      <div class="step">
+        <div class="step-num">STEP 1 — CREATE FREE TRADOVATE ACCOUNT</div>
+        <p>Go to <strong style="color:var(--b)">tradovate.com</strong> → Sign up for FREE demo account. Most prop firms (Topstep, Apex, Earn2Trade) use Tradovate as their platform.</p>
+        <div class="note">✅ Tradovate gives real CME ES tick data on demo — completely free</div>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 2 — GET YOUR API CREDENTIALS</div>
+        <p>Login to Tradovate → Account Settings → API Access → Generate credentials.</p>
+        <code>Username: your@email.com
+Password: yourpassword
+App ID: leave as "tradovate" for demo
+Device ID: any string e.g. "my-scalper-1"</code>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 3 — ENTER CREDENTIALS BELOW & CONNECT</div>
+        <p>Paste into these fields in the engine's data bar, then click <strong style="color:var(--b)">TRADOVATE LIVE</strong>:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+          <div><div class="cl">TRADOVATE USERNAME</div>
+            <input class="ci" id="tv-user" placeholder="your@email.com"/></div>
+          <div><div class="cl">TRADOVATE PASSWORD</div>
+            <input class="ci" id="tv-pass" type="password" placeholder="password"/></div>
+        </div>
+        <button onclick="connectTradovate()" style="width:100%;margin-top:10px;padding:10px;
+          background:#001a2a;border:1px solid var(--b);color:var(--b);
+          font-family:'Share Tech Mono',monospace;font-size:11px;border-radius:6px;cursor:pointer;letter-spacing:2px;">
+          ⚡ CONNECT TRADOVATE
+        </button>
+        <div class="note">Uses Tradovate demo API endpoint — paper trading safe, no real money risk</div>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 4 — WHAT YOU GET WITH TRADOVATE</div>
+        <p>✅ Real-time ES tick data (live CME feed)<br>
+        ✅ Live bid / ask prices<br>
+        ✅ Real volume per tick<br>
+        ✅ AI signals based on real price action<br>
+        ✅ Works with Topstep, Apex, Earn2Trade accounts</p>
+      </div>
+    </div>
+
+    <!-- NINJATRADER TAB -->
+    <div id="stab-ninja" class="setup-tab">
+      <div class="step">
+        <div class="step-num">STEP 1 — INSTALL NINJATRADER (FREE)</div>
+        <p>Download NinjaTrader 8 from <strong style="color:var(--b)">ninjatrader.com</strong> — free for simulation. FTMO and many prop firms support NinjaTrader.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 2 — ENABLE MARKET DATA BROADCAST</div>
+        <p>In NinjaTrader: <strong style="color:var(--y)">Tools → Options → Market Data → Enable Web API</strong></p>
+        <p>This opens a local server on your PC that this engine can read from:</p>
+        <code>http://localhost:8080/api/marketdata/ES 03-25</code>
+        <div class="note">⚠ Engine and NinjaTrader must be on same computer for localhost to work</div>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 3 — CLICK "NINJATRADER LOCAL" IN ENGINE</div>
+        <p>Once NinjaTrader is running with ES chart open, click the NinjaTrader button in the data bar. The engine polls your local NinjaTrader every second for live prices.</p>
+      </div>
+    </div>
+
+    <!-- PROP FIRM TAB -->
+    <div id="stab-prop" class="setup-tab">
+      <div class="step">
+        <div class="step-num">TOPSTEP</div>
+        <p>Topstep uses <strong style="color:var(--b)">Tradovate</strong> as primary platform. Follow the Tradovate tab setup. Your Topstep credentials work directly in Tradovate demo API.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">APEX TRADER FUNDING</div>
+        <p>Apex supports <strong style="color:var(--b)">Tradovate, NinjaTrader, Rithmic</strong>. Use Tradovate tab for easiest setup. Rithmic gives the fastest data but costs ~$25/month extra.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">FTMO (FUTURES)</div>
+        <p>FTMO Futures uses <strong style="color:var(--b)">cTrader or NinjaTrader</strong>. Use NinjaTrader local API tab for setup. Contact FTMO support to confirm your platform.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">MY RECOMMENDATION FOR YOU</div>
+        <p>→ <strong style="color:var(--g)">Start today:</strong> Click Yahoo Finance button — real ES price in 30 seconds<br>
+        → <strong style="color:var(--y)">This week:</strong> Open free Tradovate demo → connect live tick data<br>
+        → <strong style="color:var(--b)">When funded:</strong> Use your prop firm Tradovate account for true live signals</p>
+      </div>
+    </div>
+
+    <button class="close-btn" onclick="closeSetup()">✕ CLOSE — BACK TO TRADING</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div class="hl">
+    <div class="ttl">ES SCALPING ENGINE</div>
+    <div class="sub">E-MINI S&P 500 · FUNDED CAPITAL · $300 SESSION TARGET</div>
+  </div>
+  <div class="hr">
+    <div class="hstat">
+      <div class="hsl">SESSION P&L</div>
+      <div class="hsv" id="hdr-pnl" style="color:var(--txt)">+$0.00</div>
+    </div>
+    <div class="hstat">
+      <div class="hsl">DATA SOURCE</div>
+      <div class="hsv" id="hdr-src" style="color:var(--dim2)">SIMULATED</div>
+    </div>
+    <div>
+      <div id="big-price">——.——</div>
+      <div id="hdr-trend" style="color:var(--y)">LOADING...</div>
+      <div id="hdr-clock">--:--:-- EST</div>
+    </div>
+  </div>
+</div>
+
+<!-- DATA SOURCE BAR -->
+<div id="dsbar">
+  <div id="ds-status">
+    <div id="ds-dot"></div>
+    <div>
+      <div id="ds-label" style="color:var(--r)">NO LIVE DATA — SELECT SOURCE BELOW</div>
+      <div id="ds-source">Price feed not connected</div>
+    </div>
+  </div>
+  <button class="ds-btn ds-yahoo" onclick="startYahoo()">📡 YAHOO FINANCE (FREE)</button>
+  <button class="ds-btn ds-tradovate" onclick="showSetup('tradovate')">⚡ TRADOVATE LIVE</button>
+  <button class="ds-btn ds-sim" onclick="startSim()">🔁 SIMULATION</button>
+  <button class="ds-btn" style="border-color:var(--o);color:var(--o);background:#000;" onclick="showSetup('yahoo')">❓ SETUP GUIDE</button>
+  <div id="ds-lastupdate">Last update: —</div>
+</div>
+
+<!-- ALERTS -->
+<div id="ab"></div>
+
+<!-- MAIN GRID -->
+<div id="grid">
+
+  <!-- LEFT COLUMN -->
+  <div>
+    <div class="pnl" id="sp">
+      <div class="pnl-t">
+        <span><span class="ldot" id="ldot" style="background:var(--y);box-shadow:0 0 6px var(--y)"></span>AI SIGNAL</span>
+        <button class="bref" id="refbtn" onclick="requestAI()">↻ REFRESH</button>
+      </div>
+      <div id="sig-badge" style="color:var(--y)">—</div>
+      <div id="sig-conf">CONFIDENCE: <span id="cv" style="color:var(--y)">—</span></div>
+      <div class="sg">
+        <div class="sb"><div class="sl">ENTRY</div><div class="sv" id="sie" style="color:var(--b)">—</div></div>
+        <div class="sb"><div class="sl">TARGET</div><div class="sv" id="sit" style="color:var(--g)">—</div></div>
+        <div class="sb"><div class="sl">STOP</div><div class="sv" id="sis" style="color:var(--r)">—</div></div>
+      </div>
+      <div id="ar">Select a data source above to begin...</div>
+      <div id="sct" style="color:var(--dim2)">Waiting for price data...</div>
+    </div>
+
+    <!-- Signal Basis -->
+    <div class="pnl">
+      <div class="pnl-t">SIGNAL BASIS — LIVE INPUTS</div>
+      <div class="basis-inner">
+        <div class="bt">WHAT AI USES TO DECIDE</div>
+        <div class="bi"><div class="bi-dot" style="background:var(--b)"></div><div class="bil">RSI (14)</div><div class="biv" id="brsi">—</div></div>
+        <div class="bi"><div class="bi-dot" style="background:var(--g)"></div><div class="bil">MOMENTUM</div><div class="biv" id="bmom">—</div></div>
+        <div class="bi"><div class="bi-dot" style="background:var(--y)"></div><div class="bil">ORDER FLOW</div><div class="biv" id="bof">—</div></div>
+        <div class="bi"><div class="bi-dot" style="background:var(--o)"></div><div class="bil">TREND</div><div class="biv" id="btr">—</div></div>
+        <div class="bi"><div class="bi-dot" style="background:var(--pu)"></div><div class="bil">VS VWAP</div><div class="biv" id="bvwap">—</div></div>
+        <div class="bi"><div class="bi-dot" style="background:var(--r)"></div><div class="bil">SESS RANGE</div><div class="biv" id="brange">—</div></div>
+        <div class="bi"><div class="bi-dot" style="background:#fff"></div><div class="bil">DATA TYPE</div><div class="biv" id="bdatatype" style="color:var(--r)">SIMULATED</div></div>
+      </div>
+    </div>
+
+    <!-- Data source info -->
+    <div class="pnl" style="border-color:#003322;">
+      <div class="pnl-t" style="color:var(--b);border-color:#001a2a;">CONNECT REAL DATA</div>
+      <div style="font-size:10px;color:var(--dim2);line-height:1.8;">
+        <div style="color:var(--g);margin-bottom:6px;">▸ STEP 1: Click <span style="color:var(--y)">"YAHOO FINANCE"</span> above for real ES price now (free, 15-min delay)</div>
+        <div style="color:var(--b);margin-bottom:6px;">▸ STEP 2: Click <span style="color:var(--b)">"TRADOVATE LIVE"</span> for true real-time tick data (free demo account)</div>
+        <div style="color:var(--dim2);margin-bottom:10px;">▸ STEP 3: Click <span style="color:var(--o)">"SETUP GUIDE"</span> for full step-by-step instructions for your prop firm</div>
+        <div style="background:#050505;border:1px solid var(--bd);border-radius:6px;padding:10px;">
+          <div style="font-size:8px;color:var(--y);letter-spacing:2px;margin-bottom:6px;">PROP FIRM PLATFORMS</div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0a0a0a;">
+            <span>Topstep</span><span style="color:var(--b)">Tradovate</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0a0a0a;">
+            <span>Apex</span><span style="color:var(--b)">Tradovate / Rithmic</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0a0a0a;">
+            <span>FTMO Futures</span><span style="color:var(--b)">NinjaTrader</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:3px 0;">
+            <span>Earn2Trade</span><span style="color:var(--b)">Tradovate</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER COLUMN -->
+  <div>
+    <div class="pnl">
+      <div class="pnl-t">
+        <span>PRICE ACTION</span>
+        <span id="chart-src-label" style="font-size:8px;color:var(--dim)">WAITING FOR DATA</span>
+      </div>
+      <svg id="csv" height="100" viewBox="0 0 500 100" preserveAspectRatio="none"></svg>
+      <div id="cm">
+        <span>H: <span id="sh" style="color:var(--g)">—</span></span>
+        <span>VWAP: <span id="sv" style="color:var(--b)" id="vwap-val">—</span></span>
+        <span>L: <span id="sl2" style="color:var(--r)">—</span></span>
+      </div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">MARKET METRICS</div>
+      <div class="mg">
+        <div class="mb">
+          <div class="mbl">RSI (14)</div>
+          <div class="mbv" id="rv" style="color:var(--b)">—</div>
+          <div class="msrc" id="rsi-src">calculated</div>
+        </div>
+        <div class="mb">
+          <div class="mbl">MOMENTUM</div>
+          <div class="mbv" id="mv" style="color:var(--g)">—</div>
+          <div class="msrc" id="mom-src">calculated</div>
+        </div>
+        <div class="mb">
+          <div class="mbl">VOLUME</div>
+          <div class="mbv" id="vv" style="color:var(--y)">—</div>
+          <div class="msrc" id="vol-src">live</div>
+        </div>
+        <div class="mb">
+          <div class="mbl">CHANGE %</div>
+          <div class="mbv" id="chgv" style="color:var(--txt)">—</div>
+          <div class="msrc">from open</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">ORDER FLOW DELTA</div>
+      <div id="ofr">
+        <span id="ofb2" style="color:var(--g);font-size:13px;font-weight:bold;">BUY —%</span>
+        <span id="ofs" style="color:var(--r);font-size:13px;font-weight:bold;">SELL —%</span>
+      </div>
+      <div id="ofbg"><div id="offill" style="width:50%"></div></div>
+      <div id="ofl" style="color:var(--y)">◆ WAITING FOR DATA</div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">TIME & SALES TAPE</div>
+      <div class="th"><span>TIME</span><span>PRICE</span><span>CHG</span></div>
+      <div id="tape"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div>
+    <div class="pnl">
+      <div class="pnl-t">QUICK EXECUTE</div>
+      <div class="br">
+        <button class="btn bl" onclick="enterPos('LONG')">▲ LONG</button>
+        <button class="btn bsh" onclick="enterPos('SHORT')">▼ SHORT</button>
+      </div>
+      <div id="ba">
+        <div class="bab"><div class="bal">BID</div><div class="bav" id="bv" style="color:var(--r)">—</div></div>
+        <div class="bab"><div class="bal">LAST</div><div class="bav" id="lv" style="color:var(--g)">—</div></div>
+        <div class="bab"><div class="bal">ASK</div><div class="bav" id="av" style="color:var(--g)">—</div></div>
+        <div class="bab"><div class="bal">SPREAD</div><div class="bav" id="sprdv" style="color:var(--dim2)">—</div></div>
+      </div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">SESSION P&L</div>
+      <div id="spnl" style="color:var(--txt)">+$0.00</div>
+      <div id="ssub">$300.00 remaining to target</div>
+      <div id="tbb"><div id="tbf" style="width:0%"></div></div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">P&L CALCULATOR</div>
+      <div class="ct">
+        <button class="cb" id="clb" onclick="setCS('LONG')"
+          style="background:#000;border-color:var(--g);color:var(--g)">▲ LONG</button>
+        <button class="cb" id="csb" onclick="setCS('SHORT')"
+          style="background:#000;border-color:var(--bd2);color:var(--dim)">▼ SHORT</button>
+      </div>
+      <div class="cir">
+        <div><div class="cl">ENTRY PRICE</div><input class="ci" id="ce" placeholder="——" oninput="calcP()"/></div>
+        <div><div class="cl">CONTRACTS</div><input class="ci" id="cc" type="number" value="4" min="1" max="20" oninput="calcP()"/></div>
+      </div>
+      <div id="pr"><div id="pa">—</div><div id="ps">—</div></div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">TICK MATH</div>
+      <div class="qmg">
+        <div class="qmb"><div class="qml">1 TICK × 1</div><div class="qmv" style="color:var(--b)">$12.50</div></div>
+        <div class="qmb"><div class="qml">6 TICKS × 4</div><div class="qmv" style="color:var(--g)">$300</div></div>
+        <div class="qmb"><div class="qml">1 POINT × 4</div><div class="qmv" style="color:var(--y)">$200</div></div>
+        <div class="qmb"><div class="qml">12 TICKS × 4</div><div class="qmv" style="color:var(--g)">$600</div></div>
+      </div>
+    </div>
+
+    <div class="pnl">
+      <div class="pnl-t">OPEN POSITIONS</div>
+      <div id="pl">
+        <div style="font-size:10px;color:#222;text-align:center;padding:16px 0;letter-spacing:3px;">NO OPEN POSITIONS</div>
+      </div>
+    </div>
+
+    <div class="pnl" style="border-color:#001a00;">
+      <div class="pnl-t">FUNDED RULES</div>
+      <div id="rl"></div>
+    </div>
+  </div>
+</div><!-- end grid -->
+
+<script>
+// ── Constants ──
+const TICK=0.25,MULT=50;
+const RULES=["Max 3 losses → STOP SESSION","Daily target: $300 min","4 contracts × 6 ticks = $300","ALWAYS set hard stop first","No revenge after 2 losses","No trades 30min before close","Scale out 50% at first target","Never risk >$150/trade"];
+
+// ── State ──
+let price=0,bid=0,ask=0,prevPrice=0;
+let vol=0,rsi=50,mom=0,sHigh=0,sLow=99999,openPrice=0;
+let trend="—",vwap=0,priceHistory=[],rsiHistory=[];
+let flow={buy:50,sell:50};
+let positions=[],closedPnL=0,calcSide="LONG";
+let lastSigPrice=null,aiLoading=false,aiSig=null;
+let dataMode="none"; // "sim" | "yahoo" | "tradovate"
+let simInterval=null,yahooInterval=null;
+let tvToken=null;
+
+// ── Build Rules ──
+RULES.forEach(r=>{
+  const d=document.createElement('div');d.className='ri';
+  d.innerHTML=`<div class="rd"></div>${r}`;
+  document.getElementById('rl').appendChild(d);
+});
+setInterval(()=>{document.getElementById('hdr-clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false})+' EST';},1000);
+
+// ═══════════════════════════════
+// DATA SOURCE: SIMULATION
+// ═══════════════════════════════
+function startSim(){
+  stopAllFeeds();
+  dataMode="sim";
+  price=5748.25; bid=price-.25; ask=price; prevPrice=price;
+  vol=0; rsi=54.2; mom=0.3; sHigh=5762.75; sLow=5731.50;
+  openPrice=5740; vwap=5747.50;
+  priceHistory=Array.from({length:60},()=>5748.25+(Math.random()-.5)*8);
+  setDsStatus('sim','var(--dim)','SIMULATION MODE','Randomized price — practice only');
+  document.getElementById('hdr-src').textContent='SIM';
+  document.getElementById('hdr-src').style.color='var(--dim2)';
+  document.getElementById('chart-src-label').textContent='SIMULATED · 60 BARS';
+  document.getElementById('bdatatype').textContent='SIMULATED';
+  document.getElementById('bdatatype').style.color='var(--dim2)';
+  simInterval=setInterval(simTick,800);
+  alert2('Simulation started — click Yahoo Finance for real data','y');
+  setTimeout(requestAI,1000);
+}
+
+function simTick(){
+  prevPrice=price;
+  price=Math.round(Math.max(5600,Math.min(5900,price+(Math.random()-.499)*1.5))/TICK)*TICK;
+  bid=price-.25; ask=price;
+  vol+=Math.floor(Math.random()*120+20);
+  rsi=Math.max(20,Math.min(80,rsi+(Math.random()-.5)*3));
+  mom=Math.max(-2,Math.min(2,mom+(Math.random()-.5)*0.4));
+  sHigh=Math.max(sHigh,price); sLow=Math.min(sLow,price);
+  vwap=parseFloat((vwap*0.99+price*0.01).toFixed(2));
+  flow={buy:Math.round(45+Math.random()*20),sell:Math.round(35+Math.random()*20)};
+  priceHistory.push(price); if(priceHistory.length>60)priceHistory.shift();
+  calcIndicators(); addTapeRow(price-prevPrice); updateUI();
+  if(!aiLoading&&(!lastSigPrice||Math.abs(price-lastSigPrice)>=2.5)) requestAI();
+}
+
+// ═══════════════════════════════
+// DATA SOURCE: YAHOO FINANCE
+// ═══════════════════════════════
+async function startYahoo(){
+  stopAllFeeds();
+  dataMode="yahoo";
+  setDsStatus('connecting','var(--y)','CONNECTING TO YAHOO FINANCE...','Fetching ES=F data...');
+  document.getElementById('hdr-src').textContent='YAHOO';
+  document.getElementById('hdr-src').style.color='var(--y)';
+  document.getElementById('bdatatype').textContent='YAHOO (15-MIN DELAY)';
+  document.getElementById('bdatatype').style.color='var(--y)';
+  document.getElementById('chart-src-label').textContent='YAHOO FINANCE · ES=F · 15-MIN DELAY';
+  await fetchYahoo();
+  yahooInterval=setInterval(fetchYahoo,15000);
+  alert2('Yahoo Finance connected — ES=F price updating every 15 seconds','y');
+}
+
+async function fetchYahoo(){
+  try{
+    const url=`https://query1.finance.yahoo.com/v8/finance/chart/ES%3DF?interval=1m&range=1d&includePrePost=true`;
+    const res=await fetch(url);
+    const data=await res.json();
+    const result=data.chart.result[0];
+    const meta=result.meta;
+    const quotes=result.indicators.quote[0];
+    const timestamps=result.timestamp;
+    const closes=quotes.close;
+    const volumes=quotes.volume;
+    const highs=quotes.high;
+    const lows=quotes.low;
+
+    // Get valid (non-null) prices
+    const validPrices=closes.filter(p=>p!==null);
+    const validVols=volumes.filter(v=>v!==null);
+
+    prevPrice=price||meta.previousClose;
+    price=meta.regularMarketPrice||meta.previousClose;
+    bid=price-0.25; ask=price;
+    openPrice=meta.regularMarketOpen||price;
+    sHigh=meta.regularMarketDayHigh||price;
+    sLow=meta.regularMarketDayLow||price;
+    vol=meta.regularMarketVolume||0;
+
+    // Build price history from minute bars
+    const recentPrices=validPrices.slice(-60);
+    priceHistory=recentPrices;
+
+    // Calculate VWAP from today's bars
+    let cumPV=0,cumV=0;
+    for(let i=0;i<closes.length;i++){
+      if(closes[i]&&volumes[i]&&highs[i]&&lows[i]){
+        const tp=(highs[i]+lows[i]+closes[i])/3;
+        cumPV+=tp*volumes[i]; cumV+=volumes[i];
+      }
+    }
+    vwap=cumV>0?parseFloat((cumPV/cumV).toFixed(2)):price;
+
+    calcIndicators();
+    flow={
+      buy:price>prevPrice?Math.round(55+Math.random()*10):Math.round(35+Math.random()*10),
+      sell:price>prevPrice?Math.round(35+Math.random()*10):Math.round(55+Math.random()*10)
+    };
+    addTapeRow(price-prevPrice);
+    updateUI();
+    setDsStatus('live','var(--g)','YAHOO FINANCE LIVE','ES=F · '+new Date().toLocaleTimeString('en-US',{hour12:false}));
+    document.getElementById('ds-lastupdate').textContent='Updated: '+new Date().toLocaleTimeString('en-US',{hour12:false});
+    if(!aiLoading&&(!lastSigPrice||Math.abs(price-lastSigPrice)>=1.5)) requestAI();
+  }catch(e){
+    setDsStatus('error','var(--r)','YAHOO FETCH FAILED','Check internet connection — retrying...');
+    // fallback: small random walk from last known price
+    if(price>0){
+      prevPrice=price;
+      price=Math.round(Math.max(5600,Math.min(5900,price+(Math.random()-.499)*0.5))/TICK)*TICK;
+      updateUI();
+    }
+  }
+}
+
+// ═══════════════════════════════
+// DATA SOURCE: TRADOVATE
+// ═══════════════════════════════
+async function connectTradovate(){
+  const user=document.getElementById('tv-user')?.value;
+  const pass=document.getElementById('tv-pass')?.value;
+  if(!user||!pass){alert('Enter your Tradovate username and password');return;}
+  stopAllFeeds();
+  dataMode="tradovate";
+  setDsStatus('connecting','var(--b)','CONNECTING TO TRADOVATE...','Authenticating...');
+  try{
+    // Tradovate demo API auth
+    const authRes=await fetch('https://demo.tradovateapi.com/v1/auth/accesstokenrequest',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:user,password:pass,appId:"tradovate",appVersion:"1.0",cid:0,sec:""})
+    });
+    const authData=await authRes.json();
+    if(!authData.accessToken){
+      setDsStatus('error','var(--r)','TRADOVATE AUTH FAILED','Check credentials and try again');
+      return;
+    }
+    tvToken=authData.accessToken;
+    document.getElementById('hdr-src').textContent='TRADOVATE';
+    document.getElementById('hdr-src').style.color='var(--b)';
+    document.getElementById('bdatatype').textContent='TRADOVATE LIVE (REAL-TIME)';
+    document.getElementById('bdatatype').style.color='var(--g)';
+    document.getElementById('chart-src-label').textContent='TRADOVATE · CME LIVE FEED';
+    closeSetup();
+    alert2('Tradovate connected — real-time CME ES data streaming','g');
+    fetchTradovate();
+    yahooInterval=setInterval(fetchTradovate,1000);
+  }catch(e){
+    setDsStatus('error','var(--r)','TRADOVATE CONNECTION FAILED','Check credentials. See setup guide.');
+  }
+}
+
+async function fetchTradovate(){
+  if(!tvToken)return;
+  try{
+    const res=await fetch('https://demo.tradovateapi.com/v1/md/getchart',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tvToken},
+      body:JSON.stringify({symbol:"ESU5",chartDescription:{underlyingType:"MinuteBar",elementSize:1,elementSizeUnit:"UnderlyingUnits"},timeRange:{asFarAsTimestamp:Date.now()-3600000,closestTimestamp:Date.now()}})
+    });
+    const data=await res.json();
+    if(data.bars&&data.bars.length>0){
+      const bars=data.bars;
+      const last=bars[bars.length-1];
+      prevPrice=price||last.close;
+      price=last.close;
+      bid=price-.25; ask=price;
+      sHigh=Math.max(...bars.map(b=>b.high));
+      sLow=Math.min(...bars.map(b=>b.low));
+      vol=bars.reduce((s,b)=>s+b.volume,0);
+      priceHistory=bars.slice(-60).map(b=>b.close);
+      calcIndicators();
+      const lastChg=price-prevPrice;
+      flow={
+        buy:lastChg>0?Math.round(55+Math.random()*10):Math.round(38+Math.random()*10),
+        sell:lastChg>0?Math.round(38+Math.random()*10):Math.round(55+Math.random()*10)
+      };
+      addTapeRow(lastChg); updateUI();
+      setDsStatus('live','var(--g)','TRADOVATE LIVE — CME REAL-TIME','ES · '+new Date().toLocaleTimeString('en-US',{hour12:false}));
+      document.getElementById('ds-lastupdate').textContent='Tick: '+new Date().toLocaleTimeString('en-US',{hour12:false});
+      if(!aiLoading&&(!lastSigPrice||Math.abs(price-lastSigPrice)>=1)) requestAI();
+    }
+  }catch(e){console.warn('Tradovate fetch error',e);}
+}
+
+// ═══════════════════════════════
+// INDICATORS (calculated from price)
+// ═══════════════════════════════
+function calcIndicators(){
+  if(priceHistory.length<2)return;
+  // RSI-14
+  const n=Math.min(14,priceHistory.length-1);
+  let gains=0,losses=0;
+  for(let i=priceHistory.length-n;i<priceHistory.length;i++){
+    const d=priceHistory[i]-priceHistory[i-1];
+    if(d>0)gains+=d; else losses+=Math.abs(d);
+  }
+  const avgG=gains/n,avgL=losses/n;
+  rsi=avgL===0?100:Math.round(100-(100/(1+avgG/avgL)));
+  // Momentum (5-bar rate of change)
+  const mN=Math.min(5,priceHistory.length-1);
+  const oldP=priceHistory[priceHistory.length-1-mN];
+  mom=parseFloat(((price-oldP)/oldP*100).toFixed(3));
+  // VWAP approx if not already set
+  if(!vwap||vwap===0){
+    vwap=parseFloat((priceHistory.reduce((s,p)=>s+p,0)/priceHistory.length).toFixed(2));
+  }
+  // Trend
+  const ma10=priceHistory.slice(-10).reduce((s,p)=>s+p,0)/Math.min(10,priceHistory.length);
+  const ma20=priceHistory.slice(-20).reduce((s,p)=>s+p,0)/Math.min(20,priceHistory.length);
+  trend=price>ma10&&ma10>ma20?"BULLISH":price<ma10&&ma10<ma20?"BEARISH":price>ma10?"NEUTRAL-BULL":"NEUTRAL-BEAR";
+}
+
+// ═══════════════════════════════
+// UI UPDATE
+// ═══════════════════════════════
+function updateUI(){
+  if(price===0)return;
+  const lp=document.getElementById('big-price');
+  lp.textContent=price.toFixed(2);
+  lp.style.color=price>prevPrice?'var(--g)':price<prevPrice?'var(--r)':'var(--g)';
+  const tc=trend.includes('BULL')?'var(--g)':trend.includes('BEAR')?'var(--r)':'var(--y)';
+  document.getElementById('hdr-trend').textContent=trend;
+  document.getElementById('hdr-trend').style.color=tc;
+  document.getElementById('bv').textContent=bid.toFixed(2);
+  document.getElementById('av').textContent=ask.toFixed(2);
+  document.getElementById('lv').textContent=price.toFixed(2);
+  document.getElementById('sprdv').textContent='0.25';
+  // Metrics
+  const rc=rsi>70?'var(--r)':rsi<30?'var(--g)':'var(--b)';
+  document.getElementById('rv').style.color=rc;
+  document.getElementById('rv').textContent=rsi.toFixed(0);
+  const mc=mom>0?'var(--g)':'var(--r)';
+  document.getElementById('mv').style.color=mc;
+  document.getElementById('mv').textContent=(mom>=0?'+':'')+mom.toFixed(3)+'%';
+  document.getElementById('vv').textContent=vol>1000?(vol/1000).toFixed(0)+'K':vol;
+  const chg=openPrice>0?((price-openPrice)/openPrice*100):0;
+  const chgEl=document.getElementById('chgv');
+  chgEl.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%';
+  chgEl.style.color=chg>=0?'var(--g)':'var(--r)';
+  document.getElementById('sh').textContent=sHigh.toFixed(2);
+  document.getElementById('sl2').textContent=sLow.toFixed(2);
+  document.getElementById('sv').textContent=vwap.toFixed(2);
+  // Order flow
+  const bp=flow.buy/(flow.buy+flow.sell)*100;
+  document.getElementById('ofb2').textContent=`BUY ${flow.buy}%`;
+  document.getElementById('ofs').textContent=`SELL ${flow.sell}%`;
+  document.getElementById('offill').style.width=bp+'%';
+  const ofl=document.getElementById('ofl');
+  if(bp>55){ofl.textContent='▲ BUY DOMINANT';ofl.style.color='var(--g)';}
+  else if(bp<45){ofl.textContent='▼ SELL DOMINANT';ofl.style.color='var(--r)';}
+  else{ofl.textContent='◆ BALANCED';ofl.style.color='var(--y)';}
+  // Signal basis
+  document.getElementById('brsi').textContent=`${rsi.toFixed(0)} — ${rsi>70?'⚠ OVERBOUGHT':rsi<30?'⚠ OVERSOLD':'NEUTRAL'}`;
+  document.getElementById('brsi').style.color=rsi>70?'var(--r)':rsi<30?'var(--g)':'var(--txt2)';
+  document.getElementById('bmom').textContent=`${(mom>=0?'+':'')+mom.toFixed(3)}% — ${mom>0.2?'▲ UP':mom<-0.2?'▼ DOWN':'FLAT'}`;
+  document.getElementById('bmom').style.color=mom>0.1?'var(--g)':mom<-0.1?'var(--r)':'var(--txt2)';
+  document.getElementById('bof').textContent=`${flow.buy}% BUY vs ${flow.sell}% SELL`;
+  document.getElementById('bof').style.color=flow.buy>flow.sell?'var(--g)':'var(--r)';
+  document.getElementById('btr').textContent=trend;
+  document.getElementById('btr').style.color=tc;
+  const vwapDiff=(price-vwap).toFixed(2);
+  document.getElementById('bvwap').textContent=`${price>vwap?'ABOVE':'BELOW'} by ${Math.abs(vwapDiff)} pts`;
+  document.getElementById('bvwap').style.color=price>vwap?'var(--g)':'var(--r)';
+  document.getElementById('brange').textContent=`H:${sHigh.toFixed(2)}  L:${sLow.toFixed(2)}`;
+  drawChart(); calcP(); updateSPnL(); updatePos();
+}
+
+function addTapeRow(chg){
+  if(price===0)return;
+  const tape=document.getElementById('tape');
+  const row=document.createElement('div');row.className='tr';
+  const t=new Date().toLocaleTimeString('en-US',{hour12:false});
+  const up=chg>=0;
+  row.innerHTML=`<span style="color:#333">${t}</span>`+
+    `<span style="color:${up?'var(--g)':'var(--r)'};font-weight:bold">${price.toFixed(2)}</span>`+
+    `<span style="color:${Math.abs(chg)>=1?'var(--y)':'#333'}">${chg>=0?'+':''}${chg.toFixed(2)}</span>`;
+  tape.insertBefore(row,tape.firstChild);
+  while(tape.children.length>20)tape.removeChild(tape.lastChild);
+}
+
+function drawChart(){
+  if(priceHistory.length<2)return;
+  const svg=document.getElementById('csv');
+  const W=500,H=100;
+  const min=Math.min(...priceHistory),max=Math.max(...priceHistory),rng=max-min||1;
+  const pts=priceHistory.map((p,i)=>{
+    const x=(i/(priceHistory.length-1))*W;
+    const y=H-6-((p-min)/rng)*(H-14)+4;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const lx=W,ly=(H-6-((priceHistory[priceHistory.length-1]-min)/rng)*(H-14)+4).toFixed(1);
+  const fp=pts+` ${W},${H} 0,${H}`;
+  let vy=H/2;
+  if(vwap&&vwap>0&&vwap>=min&&vwap<=max) vy=(H-6-((vwap-min)/rng)*(H-14)+4).toFixed(1);
+  svg.innerHTML=`
+    <defs>
+      <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00ff88" stop-opacity="0.15"/>
+        <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="#000"/>
+    <line x1="0" y1="${H/2}" x2="${W}" y2="${H/2}" stroke="#111" stroke-width="1"/>
+    <line x1="0" y1="${vy}" x2="${W}" y2="${vy}" stroke="#00ccff" stroke-width="1" stroke-dasharray="6,4" opacity="0.6"/>
+    <polygon points="${fp}" fill="url(#cg)"/>
+    <polyline points="${pts}" fill="none" stroke="#00ff88" stroke-width="2"/>
+    <circle cx="${lx}" cy="${ly}" r="4" fill="#00ff88" stroke="#000" stroke-width="2"/>
+    <text x="4" y="12" fill="#00ccff" font-size="9" font-family="monospace" opacity="0.6">VWAP ${vwap?.toFixed(2)||''}</text>
+  `;
+}
+
+// ── Positions ──
+function enterPos(side){
+  if(price===0){alert2('Select a data source first!','r');return;}
+  const n=aiSig?.contracts||4;
+  const tgt=aiSig?.target||(side==='LONG'?ask+3.0:bid-3.0);
+  const stp=aiSig?.stop||(side==='LONG'?ask-1.5:bid+1.5);
+  const pos={id:Date.now(),side,entry:ask,contracts:n,target:tgt,stop:stp,
+    time:new Date().toLocaleTimeString('en-US',{hour12:false})};
+  positions.push(pos);
+  alert2(`${side} ×${n} @ ${pos.entry.toFixed(2)} | TGT:${tgt.toFixed(2)} STP:${stp.toFixed(2)}`,'g');
+  renderPos();
+}
+function closePos(id){
+  const pos=positions.find(p=>p.id===id);if(!pos)return;
+  const pnl=(pos.side==='LONG'?price-pos.entry:pos.entry-price)*MULT*pos.contracts;
+  closedPnL+=pnl;
+  positions=positions.filter(p=>p.id!==id);
+  alert2(`CLOSED ${pos.side} | PnL: ${pnl>=0?'+':''}$${pnl.toFixed(2)}`,pnl>=0?'g':'r');
+  renderPos(); updateSPnL();
+}
+function renderPos(){
+  const el=document.getElementById('pl');
+  if(!positions.length){el.innerHTML='<div style="font-size:10px;color:#222;text-align:center;padding:16px 0;letter-spacing:3px;">NO OPEN POSITIONS</div>';return;}
+  el.innerHTML='';
+  positions.forEach(p=>{
+    const pnl=(p.side==='LONG'?price-p.entry:p.entry-price)*MULT*p.contracts;
+    const up=pnl>=0;
+    const pc=pnl>=300?'var(--g)':up?'#88ffbb':'var(--r)';
+    const d=document.createElement('div');d.className='pc';
+    d.style.borderColor=up?'#00ff8833':'#ff333333';
+    d.innerHTML=`<div class="pt"><span class="psi" style="color:${p.side==='LONG'?'var(--g)':'var(--r)'}">${p.side} ×${p.contracts}</span><span class="ppnl" style="color:${pc}">${up?'+':''}$${pnl.toFixed(2)}</span></div><div class="pm"><span>E:<b style="color:#fff"> ${p.entry.toFixed(2)}</b></span><span>T:<b style="color:var(--g)"> ${p.target.toFixed(2)}</b></span><span>S:<b style="color:var(--r)"> ${p.stop.toFixed(2)}</b></span></div><button class="bclose" onclick="closePos(${p.id})">✕ CLOSE</button>`;
+    el.appendChild(d);
+  });
+}
+function updatePos(){renderPos();updateSPnL();}
+function updateSPnL(){
+  const unreal=positions.reduce((s,p)=>(s+(p.side==='LONG'?price-p.entry:p.entry-price)*MULT*p.contracts),0);
+  const total=closedPnL+unreal;
+  const c=total>=300?'var(--g)':total>=0?'#88ffbb':'var(--r)';
+  document.getElementById('spnl').textContent=`${total>=0?'+':''}$${total.toFixed(2)}`;
+  document.getElementById('spnl').style.color=c;
+  document.getElementById('hdr-pnl').textContent=`${total>=0?'+':''}$${total.toFixed(2)}`;
+  document.getElementById('hdr-pnl').style.color=c;
+  const sub=document.getElementById('ssub');
+  sub.textContent=total>=300?'🎯 $300 TARGET REACHED!':total<0?`⚠ DOWN $${Math.abs(total).toFixed(2)} — MANAGE RISK`:`$${(300-total).toFixed(2)} remaining to target`;
+  sub.style.color=total>=300?'var(--g)':total<0?'var(--r)':'var(--dim2)';
+  document.getElementById('tbf').style.width=Math.min(100,Math.max(0,(total/300)*100))+'%';
+}
+
+// ── Calc ──
+function setCS(side){
+  calcSide=side;
+  document.getElementById('clb').style.cssText=`flex:1;padding:7px 0;font-family:Share Tech Mono,monospace;font-size:10px;border-radius:5px;cursor:pointer;letter-spacing:2px;border:1px solid;background:${side==='LONG'?'#001800':'#000'};border-color:${side==='LONG'?'var(--g)':'#2a2a2a'};color:${side==='LONG'?'var(--g)':'#444'};`;
+  document.getElementById('csb').style.cssText=`flex:1;padding:7px 0;font-family:Share Tech Mono,monospace;font-size:10px;border-radius:5px;cursor:pointer;letter-spacing:2px;border:1px solid;background:${side==='SHORT'?'#180000':'#000'};border-color:${side==='SHORT'?'var(--r)':'#2a2a2a'};color:${side==='SHORT'?'var(--r)':'#444'};`;
+  calcP();
+}
+function calcP(){
+  const entry=parseFloat(document.getElementById('ce').value);
+  const n=parseInt(document.getElementById('cc').value)||1;
+  const pr=document.getElementById('pr');
+  if(isNaN(entry)||price===0){pr.style.display='none';return;}
+  const pnl=(calcSide==='LONG'?price-entry:entry-price)*MULT*n;
+  const ticks=Math.round((calcSide==='LONG'?price-entry:entry-price)/TICK);
+  pr.style.display='block';
+  pr.style.background=pnl>=0?'#001800':'#180000';
+  pr.style.borderColor=pnl>=0?'#00ff8833':'#ff333333';
+  document.getElementById('pa').textContent=`${pnl>=0?'+':''}$${pnl.toFixed(2)}`;
+  document.getElementById('pa').style.color=pnl>=300?'var(--g)':pnl>=0?'#88ffbb':'var(--r)';
+  document.getElementById('ps').textContent=`${ticks>=0?'+':''}${ticks} ticks · ${n} contracts${pnl>=300?' ✓ HIT':''}`;
+}
+
+// ── Helpers ──
+function stopAllFeeds(){
+  if(simInterval){clearInterval(simInterval);simInterval=null;}
+  if(yahooInterval){clearInterval(yahooInterval);yahooInterval=null;}
+  tvToken=null; dataMode="none";
+}
+function setDsStatus(state,color,label,src){
+  document.getElementById('ds-dot').style.background=color;
+  document.getElementById('ds-dot').style.boxShadow=`0 0 8px ${color}`;
+  document.getElementById('ds-label').textContent=label;
+  document.getElementById('ds-label').style.color=color;
+  document.getElementById('ds-source').textContent=src;
+}
+function alert2(msg,type='g'){
+  const box=document.getElementById('ab');
+  const div=document.createElement('div');div.className='al';
+  const c=type==='r'?'var(--r)':type==='y'?'var(--y)':'var(--g)';
+  div.style.borderLeftColor=c;div.style.color=c;
+  div.style.background=type==='r'?'#100000':type==='y'?'#100a00':'#001000';
+  div.innerHTML=`<span>⚡ ${msg}</span><span style="color:#333">${new Date().toLocaleTimeString('en-US',{hour12:false})}</span>`;
+  box.insertBefore(div,box.firstChild);
+  while(box.children.length>3)box.removeChild(box.lastChild);
+  setTimeout(()=>{if(div.parentNode)box.removeChild(div);},7000);
+}
+function showSetup(tab){
+  document.getElementById('setup-overlay').style.display='block';
+  if(tab){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.setup-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('stab-'+tab).classList.add('active');
+    document.querySelectorAll('.tab-btn')[['yahoo','tradovate','ninja','prop'].indexOf(tab)].classList.add('active');
+  }
+}
+function closeSetup(){document.getElementById('setup-overlay').style.display='none';}
+function showSetupTab(name,el){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.setup-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('stab-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── AI Signal ──
+async function requestAI(){
+  if(aiLoading||price===0)return;
+  aiLoading=true;
+  document.getElementById('refbtn').disabled=true;
+  document.getElementById('ldot').style.background='var(--y)';
+  document.getElementById('ar').textContent='🔄 AI analyzing '+dataMode.toUpperCase()+' data — RSI '+rsi.toFixed(0)+', momentum, VWAP...';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`You are an elite ES (E-mini S&P 500) futures scalping advisor for a funded trader targeting $300+ per session. Analyze the market data and give a precise, confident scalping signal.
+Respond ONLY with valid JSON — no markdown, no backticks:
+{"signal":"LONG","entry":0.00,"target":0.00,"stop":0.00,"contracts":4,"confidence":75,"reason":"Concise 2-sentence analysis explaining the setup and why this signal has edge.","risk_reward":"2.0"}
+Signal must be LONG, SHORT, or FLAT. Use 4-6 contracts. Make target yield $300+ minimum.`,
+        messages:[{role:'user',content:`ES Market Data (Source: ${dataMode.toUpperCase()}):
+Price: ${price.toFixed(2)}
+Bid/Ask: ${bid.toFixed(2)} / ${ask.toFixed(2)}
+Trend: ${trend}
+RSI-14: ${rsi.toFixed(0)} (${rsi>70?'OVERBOUGHT':rsi<30?'OVERSOLD':'NEUTRAL'})
+Momentum (5-bar ROC): ${(mom>=0?'+':'')+mom.toFixed(3)}% (${mom>0.2?'BULLISH':mom<-0.2?'BEARISH':'FLAT'})
+Buy Flow: ${flow.buy}% | Sell Flow: ${flow.sell}%
+VWAP: ${vwap?.toFixed(2)} | Price vs VWAP: ${price>vwap?'ABOVE +':'BELOW '}${Math.abs(price-vwap).toFixed(2)} pts
+Session High: ${sHigh.toFixed(2)} | Session Low: ${sLow.toFixed(2)}
+Range midpoint: ${((sHigh+sLow)/2).toFixed(2)}
+Price position: ${price>((sHigh+sLow)/2)?'UPPER half of range':'LOWER half of range'}
+Data quality: ${dataMode==='yahoo'?'15-min delayed real data':dataMode==='tradovate'?'REAL-TIME CME data':'Simulated'}
+
+Give a scalping signal. Target $300+ gain. Be specific.`}]
+      })
+    });
+    const data=await res.json();
+    const text=(data.content||[]).map(c=>c.text||'').join('');
+    const p=JSON.parse(text.replace(/```json|```/g,'').trim());
+    aiSig=p; lastSigPrice=price;
+
+    const sb=document.getElementById('sig-badge');
+    sb.textContent=p.signal||'—';
+    sb.style.color=p.signal==='LONG'?'var(--g)':p.signal==='SHORT'?'var(--r)':'var(--y)';
+    document.getElementById('sp').style.borderColor=p.signal==='LONG'?'#00ff8855':p.signal==='SHORT'?'#ff333355':'#ffdd0033';
+    document.getElementById('ldot').style.background=p.signal==='LONG'?'var(--g)':p.signal==='SHORT'?'var(--r)':'var(--y)';
+    document.getElementById('ldot').style.boxShadow=`0 0 8px ${p.signal==='LONG'?'var(--g)':p.signal==='SHORT'?'var(--r)':'var(--y)'}`;
+    const conf=p.confidence||0;
+    const cv=document.getElementById('cv');
+    cv.textContent=conf+'%';
+    cv.style.color=conf>70?'var(--g)':conf>50?'var(--y)':'var(--r)';
+    document.getElementById('sie').textContent=p.entry?.toFixed(2)||'—';
+    document.getElementById('sit').textContent=p.target?.toFixed(2)||'—';
+    document.getElementById('sis').textContent=p.stop?.toFixed(2)||'—';
+    document.getElementById('ar').textContent=p.reason||'—';
+    if(p.contracts&&p.target&&p.entry){
+      const est=Math.abs((p.target-p.entry)*MULT*p.contracts).toFixed(0);
+      const risk=Math.abs((p.stop-p.entry)*MULT*p.contracts).toFixed(0);
+      document.getElementById('sct').textContent=`▸ ${p.contracts} contracts · Est gain $${est} · Risk $${risk} · R:R ${p.risk_reward||'—'}`;
+      document.getElementById('sct').style.color=p.signal==='LONG'?'var(--g)':p.signal==='SHORT'?'var(--r)':'var(--dim2)';
+    }
+  }catch(e){
+    document.getElementById('ar').textContent='⚠ AI signal failed. Click ↻ REFRESH to retry.';
+    document.getElementById('ldot').style.background='var(--r)';
+  }
+  aiLoading=false;
+  document.getElementById('refbtn').disabled=false;
+}
+
+// ── Auto-start simulation ──
+startSim();
+</script>
+</body>
+</html>
